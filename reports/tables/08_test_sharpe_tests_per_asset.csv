@@ -1,0 +1,5 @@
+asset,strategy,sharpe,sharpe_bh,delta_sharpe,p_hac,p_hac_holm,p_bootstrap
+SPY,Vol. managed,0.532111,0.512637,0.019474,0.691961,1.0,0.6115
+QQQ,Vol. managed,0.557149,0.536175,0.020974,0.767791,1.0,0.7465
+GLD,Vol. managed,0.938812,0.771351,0.167462,0.206157,0.824627,0.1555
+TLT,Vol. managed,-0.88755,-0.813772,-0.073778,0.218698,0.824627,0.231

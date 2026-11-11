@@ -1,0 +1,388 @@
+
+==============================================================================
+1. DATA
+==============================================================================
+Prices loaded from cache (prices.csv)
+Days with all prices: 4211 (0 dropped)
+Average risk-free rate: 1.47 % per year
+
+==============================================================================
+2. CHRONOLOGICAL SPLIT (no shuffling)
+==============================================================================
+train       2010-01-05 -> 2018-12-31  (2263 days)
+validation  2019-01-02 -> 2021-12-31  (757 days)
+test        2022-01-03 -> 2026-09-30  (1190 days)
+
+==============================================================================
+3. ECONOMETRIC ANALYSIS (training data only)
+==============================================================================
+
+3.1 Daily log returns (%); mean and volatility annualised
+     mean_ann_%  vol_ann_%  skewness  excess_kurtosis  jarque_bera_p  min_%  max_%
+SPY      10.825     14.940    -0.494            4.530          0.000 -6.734  4.929
+QQQ      14.447     17.392    -0.384            3.169          0.000 -6.208  6.057
+GLD       1.105     15.900    -0.592            5.853          0.000 -9.191  4.787
+TLT       6.309     13.938    -0.132            1.636          0.000 -5.177  3.889
+
+3.2 Stationarity. ADF H0: unit root. KPSS H0: stationary (statsmodels bounds the KPSS p-value to [0.01, 0.10])
+                 ADF_p  KPSS_p         verdict
+asset series                                  
+SPY   log price  0.643   0.010  non-stationary
+      return     0.000   0.100      stationary
+QQQ   log price  0.800   0.010  non-stationary
+      return     0.000   0.100      stationary
+GLD   log price  0.328   0.010  non-stationary
+      return     0.000   0.100      stationary
+TLT   log price  0.229   0.010  non-stationary
+      return     0.000   0.100      stationary
+
+3.3 Serial dependence, 10 lags. Returns: memory in the mean (what ARIMA exploits). Squared returns and ARCH-LM: memory in volatility (what GARCH models)
+    ljung_box_r_p ljung_box_r2_p arch_lm_p memory_in_mean arch_effects
+SPY         0.005          0.000     0.000            yes          yes
+QQQ         0.019          0.000     0.000            yes          yes
+GLD         0.800          0.000     0.000             no          yes
+TLT         0.000          0.000     0.000            yes          yes
+
+3.4 Return correlations
+       SPY    QQQ    GLD    TLT
+SPY  1.000  0.925 -0.001 -0.486
+QQQ  0.925  1.000 -0.011 -0.408
+GLD -0.001 -0.011  1.000  0.184
+TLT -0.486 -0.408  0.184  1.000
+
+3.5 Granger causality p-values, VAR(1)
+                   SPY   QQQ   GLD   TLT
+caused / causing                        
+SPY                NaN 0.635 0.379 0.313
+QQQ              0.627   NaN 0.157 0.462
+GLD              0.029 0.098   NaN 0.209
+TLT              0.359 0.996 0.596   NaN
+
+3.6 Johansen trace test on log prices
+           trace  crit_95% reject
+H0                               
+rank <= 0 33.838    47.855     no
+rank <= 1 19.144    29.796     no
+rank <= 2  7.545    15.494     no
+rank <= 3  2.549     3.841     no
+Estimated number of cointegrating relations: 0
+
+Engle-Granger, pairwise
+         EG_p cointegrated_5%
+pair                         
+SPY-QQQ 0.273              no
+SPY-GLD 0.388              no
+SPY-TLT 0.452              no
+QQQ-GLD 0.461              no
+QQQ-TLT 0.492              no
+GLD-TLT 0.424              no
+
+==============================================================================
+4. FORECASTS (specification chosen on train, then frozen)
+==============================================================================
+           ARIMA       AIC  AR_lags_GARCH  omega  alpha  beta  persistence  t_dof
+asset                                                                            
+SPY    (2, 0, 2) 6,143.621              0  0.022  0.170 0.823        0.994  4.893
+QQQ    (1, 0, 2) 6,833.567              0  0.035  0.146 0.842        0.988  4.676
+GLD    (1, 0, 0) 6,431.864              0  0.007  0.035 0.958        0.993  4.651
+TLT    (2, 0, 2) 5,819.992              1  0.005  0.037 0.956        0.993 13.886
+VAR lags (AIC): 1. Persistence alpha + beta close to 1 means long-lived volatility shocks.
+Walk-forward 2019-01-02 -> 2026-09-30 (re-estimated every 21 days)
+  SPY: done (111 s)
+  QQQ: done (81 s)
+  GLD: done (40 s)
+  TLT: done (103 s)
+
+Forecast accuracy on validation. DM < 0 with DM_p < 0.05: better than a random walk. brier_skill > 0: the classifier beats the historical frequency of up days.
+                        RMSE    MAE  hit_rate_%  DM_vs_RW   DM_p  brier_skill
+asset model                                                                  
+SPY   Random walk     1.3903 0.8422         NaN       NaN    NaN          NaN
+      Historical mean 1.3882 0.8354     58.3884   -1.3048 0.1924          NaN
+      ARIMA           1.3778 0.8354     54.0291   -1.0040 0.3157          NaN
+      AR-GARCH        1.3873 0.8317     58.3884   -0.8461 0.3978          NaN
+      VAR             1.3741 0.8287     57.0674   -2.0042 0.0454          NaN
+      Logit              NaN    NaN     57.3316       NaN    NaN      -0.0062
+      GBM                NaN    NaN     54.5575       NaN    NaN      -0.0272
+QQQ   Random walk     1.5814 1.0443         NaN       NaN    NaN          NaN
+      Historical mean 1.5777 1.0332     59.8415   -1.5697 0.1169          NaN
+      ARIMA           1.5709 1.0513     50.9908   -1.1278 0.2597          NaN
+      AR-GARCH        1.5763 1.0260     59.8415   -1.0254 0.3055          NaN
+      VAR             1.5647 1.0268     58.6526   -2.4923 0.0129          NaN
+      Logit              NaN    NaN     59.3131       NaN    NaN       0.0049
+      GBM                NaN    NaN     56.9353       NaN    NaN      -0.0273
+GLD   Random walk     0.9665 0.6877         NaN       NaN    NaN          NaN
+      Historical mean 0.9663 0.6868     54.6896   -0.4418 0.6588          NaN
+      ARIMA           0.9682 0.6879     50.4624    1.2568 0.2092          NaN
+      AR-GARCH        0.9661 0.6861     54.6896   -0.5138 0.6075          NaN
+      VAR             0.9653 0.6901     48.4808   -0.2328 0.8160          NaN
+      Logit              NaN    NaN     52.5760       NaN    NaN      -0.0137
+      GBM                NaN    NaN     51.5192       NaN    NaN      -0.0286
+TLT   Random walk     1.0265 0.7184         NaN       NaN    NaN          NaN
+      Historical mean 1.0262 0.7179     51.9155   -0.2819 0.7781          NaN
+      ARIMA           1.0277 0.7163     52.1797    0.1655 0.8686          NaN
+      AR-GARCH        1.0297 0.7160     53.3686    0.5010 0.6165          NaN
+      VAR             1.0288 0.7199     50.8587    0.2507 0.8021          NaN
+      Logit              NaN    NaN     54.4254       NaN    NaN       0.0042
+      GBM                NaN    NaN     50.8587       NaN    NaN      -0.0353
+
+==============================================================================
+5. STRATEGY SELECTION ON VALIDATION
+==============================================================================
+Costs: 0.10 % commission + 0.05 % slippage per traded dollar. Cash earns the T-bill rate. Sharpe ratios use excess returns.
+A strategy replaces buy & hold only if its validation Sharpe beats buy & hold's by 0.20 and, for signal rules, it completed >= 10 trades.
+
+Best parameter of each strategy, per asset
+                    threshold  vol_factor  final_value  total_return_%  sharpe  max_drawdown_%  trades  avg_exposure_%               reason
+asset model                                                                                                                                
+SPY   Buy & hold          NaN         NaN    4,989.742          99.590   1.124         -33.717       1         100.000            reference
+      ARIMA             0.100         NaN    3,353.253          34.130   0.619         -14.428      97          17.173  below Sharpe margin
+      AR-GARCH          0.100         NaN    3,307.504          32.300   1.169          -5.114       1          33.421  below Sharpe margin
+      VAR               0.000         NaN    3,645.047          45.802   0.741         -22.023     147          73.052  below Sharpe margin
+      Logit             0.500         NaN    4,191.521          67.661   0.888         -33.717      40          90.489  below Sharpe margin
+      GBM               0.500         NaN    3,252.032          30.081   0.497         -33.710     124          72.391  below Sharpe margin
+      Vol. managed        NaN       1.500    5,072.190         102.888   1.560         -18.494       1          95.793             accepted
+QQQ   Buy & hold          NaN         NaN    6,559.547         162.382   1.383         -28.559       1         100.000            reference
+      ARIMA             0.100         NaN    4,349.045          73.962   1.147         -12.917      60          23.118  below Sharpe margin
+      AR-GARCH          0.000         NaN    6,559.547         162.382   1.383         -28.559       1         100.000  below Sharpe margin
+      VAR               0.000         NaN    5,989.833         139.593   1.444         -21.444     122          78.468  below Sharpe margin
+      Logit             0.500         NaN    5,216.936         108.677   1.175         -31.697      53          88.375  below Sharpe margin
+      GBM               0.500         NaN    4,453.420          78.137   0.924         -23.608     119          74.373  below Sharpe margin
+      Vol. managed        NaN       1.250    5,973.207         138.928   1.641         -16.341       1          92.556             accepted
+GLD   Buy & hold          NaN         NaN    3,519.665          40.787   0.768         -18.774       1         100.000            reference
+      ARIMA             0.100         NaN    2,449.934          -2.003  -0.704          -4.662       4           0.661  below Sharpe margin
+      AR-GARCH          0.000         NaN    3,519.665          40.787   0.768         -18.774       1         100.000  below Sharpe margin
+      VAR               0.100         NaN    2,429.623          -2.815  -0.315          -6.702      64           9.511  below Sharpe margin
+      Logit             0.500         NaN    2,448.834          -2.047  -0.051         -20.231     112          74.373  below Sharpe margin
+      GBM               0.600         NaN    2,234.997         -10.600  -0.716         -13.722      71          11.889  below Sharpe margin
+      Vol. managed        NaN       0.750    3,299.919          31.997   0.786         -14.799       1          80.528  below Sharpe margin
+TLT   Buy & hold          NaN         NaN    3,211.008          28.440   0.543         -21.344       1         100.000            reference
+      ARIMA             0.100         NaN    2,287.376          -8.505  -0.346         -12.187      94          18.362  below Sharpe margin
+      AR-GARCH          0.100         NaN    2,303.978          -7.841  -0.451         -12.013      57           8.587  below Sharpe margin
+      VAR               0.000         NaN    1,790.082         -28.397  -0.890         -35.378     148          72.523  below Sharpe margin
+      Logit             0.500         NaN    2,828.228          13.129   0.314         -20.277      91          76.354  below Sharpe margin
+      GBM               0.500         NaN    2,114.041         -15.438  -0.417         -24.850     140          63.012  below Sharpe margin
+      Vol. managed        NaN       1.000    3,179.049          27.162   0.608         -20.656       1          94.324  below Sharpe margin
+
+Selected strategy per asset
+              model  threshold  vol_factor  final_value  total_return_%  sharpe  max_drawdown_%  trades  avg_exposure_%
+asset                                                                                                                  
+SPY    Vol. managed        NaN       1.500    5,072.190         102.888   1.560         -18.494       1          95.793
+QQQ    Vol. managed        NaN       1.250    5,973.207         138.928   1.641         -16.341       1          92.556
+GLD      Buy & hold        NaN         NaN    3,519.665          40.787   0.768         -18.774       1         100.000
+TLT      Buy & hold        NaN         NaN    3,211.008          28.440   0.543         -21.344       1         100.000
+
+==============================================================================
+6. OUT-OF-SAMPLE TEST, PER ASSET
+==============================================================================
+Forecast accuracy on test
+                        RMSE    MAE  hit_rate_%  DM_vs_RW   DM_p  brier_skill
+asset model                                                                  
+SPY   Random walk     1.0903 0.7700         NaN       NaN    NaN          NaN
+      Historical mean 1.0896 0.7678     53.3613   -0.5290 0.5969          NaN
+      ARIMA           1.0929 0.7802     52.1008    0.3654 0.7149          NaN
+      AR-GARCH        1.0909 0.7688     53.3613    0.1972 0.8437          NaN
+      VAR             1.0947 0.7758     51.0924    0.7848 0.4327          NaN
+      Logit              NaN    NaN     53.1933       NaN    NaN      -0.0106
+      GBM                NaN    NaN     52.2689       NaN    NaN      -0.0251
+QQQ   Random walk     1.4608 1.0666         NaN       NaN    NaN          NaN
+      Historical mean 1.4601 1.0629     54.2017   -0.3753 0.7075          NaN
+      ARIMA           1.4601 1.0715     50.8403   -0.1075 0.9144          NaN
+      AR-GARCH        1.4623 1.0631     54.2017    0.3715 0.7104          NaN
+      VAR             1.4637 1.0716     50.7563    0.4962 0.6198          NaN
+      Logit              NaN    NaN     52.6050       NaN    NaN      -0.0081
+      GBM                NaN    NaN     53.4454       NaN    NaN      -0.0209
+GLD   Random walk     1.2177 0.8686         NaN       NaN    NaN          NaN
+      Historical mean 1.2168 0.8668     54.3697   -1.1166 0.2644          NaN
+      ARIMA           1.2168 0.8663     54.4538   -0.8421 0.3999          NaN
+      AR-GARCH        1.2164 0.8662     54.3697   -1.2153 0.2245          NaN
+      VAR             1.2201 0.8707     49.9160    1.0204 0.3077          NaN
+      Logit              NaN    NaN     54.2857       NaN    NaN       0.0055
+      GBM                NaN    NaN     52.4370       NaN    NaN      -0.0166
+TLT   Random walk     0.9895 0.7704         NaN       NaN    NaN          NaN
+      Historical mean 0.9905 0.7708     49.0756    2.2569 0.0242          NaN
+      ARIMA           0.9911 0.7694     49.0756    0.5350 0.5927          NaN
+      AR-GARCH        0.9897 0.7697     49.9160    0.1259 0.8999          NaN
+      VAR             0.9899 0.7720     50.6723    0.1303 0.8964          NaN
+      Logit              NaN    NaN     50.0840       NaN    NaN      -0.0055
+      GBM                NaN    NaN     49.3277       NaN    NaN      -0.0194
+
+Every strategy on test with its validation parameter (information only: picking the best one here would be cheating)
+                    threshold  vol_factor  final_value  total_return_%  sharpe  max_drawdown_%  trades
+asset model                                                                                           
+SPY   ARIMA             0.100         NaN    2,275.133          -8.995  -0.459         -27.073     204
+      AR-GARCH          0.100         NaN    3,116.724          24.669   0.124         -27.645       5
+      VAR               0.000         NaN    1,960.851         -21.566  -0.541         -31.486     237
+      Logit             0.500         NaN    3,401.043          36.042   0.236         -27.394      46
+      GBM               0.500         NaN    2,489.469          -0.421  -0.171         -31.791     165
+      Vol. managed        NaN       1.500    4,243.027          69.721   0.532         -23.239       1
+QQQ   ARIMA             0.100         NaN    3,448.730          37.949   0.255         -18.853     220
+      AR-GARCH          0.000         NaN    4,776.366          91.055   0.536         -34.828       1
+      VAR               0.000         NaN    2,269.387          -9.225  -0.199         -30.926     217
+      Logit             0.500         NaN    2,964.595          18.584   0.092         -39.687      88
+      GBM               0.500         NaN    3,106.707          24.268   0.133         -30.767     162
+      Vol. managed        NaN       1.250    4,665.529          86.621   0.557         -32.236       1
+GLD   ARIMA             0.100         NaN    2,883.561          15.342  -0.476          -4.285       1
+      AR-GARCH          0.000         NaN    5,560.654         122.426   0.771         -26.405       1
+      VAR               0.100         NaN    2,213.350         -11.466  -0.991         -18.438      99
+      Logit             0.500         NaN    4,230.365          69.215   0.541         -22.691     153
+      GBM               0.600         NaN    3,222.952          28.918   0.238         -10.695     142
+      Vol. managed        NaN       0.750    4,992.146          99.686   0.939         -16.418       1
+TLT   ARIMA             0.100         NaN    2,150.864         -13.965  -0.910         -19.206     101
+      AR-GARCH          0.100         NaN    2,600.591           4.024  -0.585          -7.768      74
+      VAR               0.000         NaN    1,009.992         -59.600  -1.900         -59.600     295
+      Logit             0.500         NaN    1,254.183         -49.833  -1.493         -50.034     168
+      GBM               0.500         NaN      930.185         -62.793  -2.083         -62.793     242
+      Vol. managed        NaN       1.000    1,611.858         -35.526  -0.888         -37.324       1
+
+Selected strategy vs buy & hold, per asset
+                                  final_value    profit  total_return_%  CAGR_%  volatility_%  sharpe  sortino  max_drawdown_%  orders  trades  win_rate_%  time_in_market_%  avg_exposure_%  costs
+asset strategy                                                                                                                                                                                     
+SPY   Vol. managed (factor 1.50)    4,243.027 1,743.027          69.721  11.854        16.046   0.532    0.754         -23.239      46       1     100.000           100.000          98.163 25.720
+      Buy & hold                    4,270.449 1,770.449          70.818  12.006        17.330   0.513    0.738         -24.496       1       1     100.000           100.000         100.000  3.750
+QQQ   Vol. managed (factor 1.25)    4,665.529 2,165.529          86.621  14.125        20.337   0.557    0.790         -32.236      87       1     100.000           100.000          93.986 47.351
+      Buy & hold                    4,776.366 2,276.366          91.055  14.694        23.215   0.536    0.771         -34.828       1       1     100.000           100.000         100.000  3.750
+GLD   Buy & hold (default)          5,560.654 3,060.654         122.426  18.446        19.237   0.771    1.083         -26.405       1       1     100.000           100.000         100.000  3.750
+TLT   Buy & hold (default)          1,555.235  -944.765         -37.791  -9.563        15.702  -0.814   -1.107         -41.512       1       1       0.000           100.000         100.000  3.750
+
+==============================================================================
+7. ASSET ALLOCATION (fixed rules, monthly rebalancing)
+==============================================================================
+Equal weight (monthly):    1/N in each asset, rebalanced monthly.
+Inverse vol (GARCH):       weights proportional to 1 / GARCH volatility forecast.
+Risk parity (GARCH):       equal risk contributions (GARCH volatility, 1-year correlations).
+Risk parity (historical):  same with 3-month realised volatility: does GARCH add anything?
+
+Validation
+                Buy & hold  Equal weight (monthly)  Inverse vol (GARCH)  Risk parity (GARCH)  Risk parity (historical)
+final_value     18,279.960              17,981.257           16,914.854           16,150.814                15,669.591
+profit           8,279.960               7,981.257            6,914.854            6,150.814                 5,669.591
+total_return_%      82.800                  79.813               69.149               61.508                    56.696
+CAGR_%              22.239                  21.570               19.121               17.302                    16.127
+volatility_%        12.297                  11.923               10.476               10.079                    10.175
+sharpe               1.630                   1.631                1.647                1.555                     1.442
+sortino              2.294                   2.303                2.358                2.229                     2.036
+max_drawdown_%     -16.553                 -16.238              -13.535              -13.551                   -15.233
+costs               15.000                  37.292              153.347              144.079                    79.907
+
+Test
+                Buy & hold  Equal weight (monthly)  Inverse vol (GARCH)  Risk parity (GARCH)  Risk parity (historical)
+final_value     16,162.633              15,094.057           14,833.705           14,315.148                14,182.343
+profit           6,162.633               5,094.057            4,833.705            4,315.148                 4,182.343
+total_return_%      61.626                  50.941               48.337               43.151                    41.823
+CAGR_%              10.702                   9.110                8.709                7.893                     7.680
+volatility_%        13.790                  13.042               11.672               11.386                    11.435
+sharpe               0.520                   0.431                0.435                0.377                     0.358
+sortino              0.739                   0.618                0.624                0.539                     0.515
+max_drawdown_%     -25.337                 -25.492              -23.975              -24.095                   -24.171
+costs               15.000                  40.486              156.617              152.159                    85.051
+
+Average weights on test (%)
+                          SPY  QQQ  GLD  TLT
+Buy & hold               25.9 25.6 31.9 16.7
+Equal weight (monthly)   25.1 25.0 25.1 24.8
+Inverse vol (GARCH)      27.0 19.7 25.8 27.5
+Risk parity (GARCH)      23.8 17.6 27.7 31.0
+Risk parity (historical) 23.4 17.3 27.9 31.5
+
+==============================================================================
+8. RESULTS ON THE TEST PERIOD
+==============================================================================
+Strategy selected on validation, per asset:
+  SPY   -> Vol. managed (factor 1.50)
+  QQQ   -> Vol. managed (factor 1.25)
+  GLD   -> Buy & hold (default)
+  TLT   -> Buy & hold (default)
+
+                Buy & hold  Selected strategy  Vol. managed  Equal weight (monthly)  Inverse vol (GARCH)  Risk parity (GARCH)  Risk parity (historical)
+final_value     16,162.705         16,024.446    15,512.560              15,094.057           14,833.705           14,315.148                14,182.343
+profit           6,162.705          6,024.446     5,512.560               5,094.057            4,833.705            4,315.148                 4,182.343
+total_return_%      61.627             60.244        55.126                  50.941               48.337               43.151                    41.823
+CAGR_%              10.702             10.501         9.744                   9.110                8.709                7.893                     7.680
+volatility_%        13.790             13.084        11.283                  13.042               11.672               11.386                    11.435
+sharpe               0.520              0.527         0.530                   0.431                0.435                0.377                     0.358
+sortino              0.739              0.740         0.752                   0.618                0.624                0.539                     0.515
+max_drawdown_%     -25.337            -24.189       -21.908                 -25.492              -23.975              -24.095                   -24.171
+costs               15.000             80.572       132.032                  40.486              156.617              152.159                    85.051
+
+Is the Sharpe difference vs buy & hold significant? p_hac: Ledoit-Wolf HAC test. p_hac_holm: adjusted for testing several strategies. p_bootstrap: circular block bootstrap.
+                          sharpe  sharpe_bh  delta_sharpe  p_hac  p_hac_holm  p_bootstrap
+Selected strategy          0.527      0.520         0.007  0.864       1.000        0.837
+Vol. managed               0.530      0.520         0.011  0.917       1.000        0.915
+Equal weight (monthly)     0.431      0.520        -0.089  0.202       1.000        0.177
+Inverse vol (GARCH)        0.435      0.520        -0.085  0.485       1.000        0.421
+Risk parity (GARCH)        0.377      0.520        -0.143  0.284       1.000        0.232
+Risk parity (historical)   0.358      0.520        -0.161  0.233       1.000        0.193
+
+Per asset
+                    sharpe  sharpe_bh  delta_sharpe  p_hac  p_hac_holm  p_bootstrap
+asset strategy                                                                     
+SPY   Vol. managed   0.532      0.513         0.019  0.692       1.000        0.612
+QQQ   Vol. managed   0.557      0.536         0.021  0.768       1.000        0.747
+GLD   Vol. managed   0.939      0.771         0.167  0.206       0.825        0.155
+TLT   Vol. managed  -0.888     -0.814        -0.074  0.219       0.825        0.231
+
+==============================================================================
+9. ROBUSTNESS: THE WHOLE PROCEDURE ON SEVERAL TEST WINDOWS
+==============================================================================
+5 windows, 5 parallel process(es). This can take a while.
+  Test 2016-2017 done (2.7 min)
+  Test 2018-2019 done (3.1 min)
+  Test 2020-2021 done (4.0 min)
+  Test 2022-2023 done (4.2 min)
+  Test 2024-2026 done (4.7 min)
+
+Strategy selected on validation, per window
+                  SPY         QQQ           GLD           TLT
+2016-2017         B&H         B&H  Logit (0.60)           B&H
+2018-2019         B&H         B&H           B&H           B&H
+2020-2021         B&H         B&H           B&H           B&H
+2022-2023  Vol (1.50)  Vol (1.25)           B&H           B&H
+2024-2026         B&H         B&H           B&H  Logit (0.60)
+
+Sharpe ratio per test window
+                          2016-2017  2018-2019  2020-2021  2022-2023  2024-2026  mean beats_bh
+Strategy                                                                                      
+Buy & hold                     1.84       0.99       1.39      -0.29       1.02  0.99        -
+Selected strategy              1.76       0.99       1.39      -0.25       1.11  1.00   2 of 5
+Vol. managed                   1.88       0.90       1.47      -0.27       1.01  1.00   3 of 5
+Equal weight (monthly)         1.89       1.08       1.35      -0.29       1.01  1.01   3 of 5
+Inverse vol (GARCH)            1.98       1.14       1.42      -0.24       1.01  1.06   4 of 5
+Risk parity (GARCH)            1.94       1.18       1.30      -0.29       0.96  1.02   2 of 5
+Risk parity (historical)       1.99       1.04       1.17      -0.29       0.93  0.97   2 of 5
+
+CAGR (%) per test window
+                          2016-2017  2018-2019  2020-2021  2022-2023  2024-2026
+Strategy                                                                       
+Buy & hold                     12.9       10.8       19.6       -1.3       18.4
+Selected strategy              10.9       10.8       19.6       -0.5       19.2
+Vol. managed                   12.9        8.6       12.8       -0.4       15.7
+Equal weight (monthly)         13.2       11.3       19.5       -1.5       17.2
+Inverse vol (GARCH)            13.6       10.5       17.9       -0.3       15.5
+Risk parity (GARCH)            13.3       10.4       15.6       -0.9       14.6
+Risk parity (historical)       13.5        9.6       14.0       -0.9       14.5
+
+All test windows stitched (2016-01-04 -> 2026-09-30, 2701 out-of-sample days). Models and strategies are re-selected in every window.
+                Buy & hold  Selected strategy  Vol. managed  Equal weight (monthly)  Inverse vol (GARCH)  Risk parity (GARCH)  Risk parity (historical)
+final_value     34,683.529         34,578.250    28,245.408              33,997.333           32,376.106           29,738.630                28,538.959
+profit          24,683.529         24,578.250    18,245.408              23,997.333           22,376.106           19,738.630                18,538.959
+total_return_%     246.835            245.783       182.454                 239.973              223.761              197.386                   185.390
+CAGR_%              12.303             12.272        10.172                  12.094               11.584               10.703                    10.279
+volatility_%        11.626             11.227         9.291                  11.444               10.142                9.841                     9.949
+sharpe               0.862              0.886         0.846                   0.858                0.909                0.853                     0.806
+sortino              1.221              1.252         1.187                   1.221                1.300                1.219                     1.150
+max_drawdown_%     -25.703            -24.561       -22.516                 -25.753              -24.179              -24.316                   -24.336
+
+Sharpe tests on the stitched record
+                          sharpe  sharpe_bh  delta_sharpe  p_hac  p_hac_holm  p_bootstrap
+Selected strategy          0.886      0.862         0.024  0.644       1.000        0.637
+Vol. managed               0.846      0.862        -0.016  0.870       1.000        0.880
+Equal weight (monthly)     0.858      0.862        -0.004  0.887       1.000        0.894
+Inverse vol (GARCH)        0.909      0.862         0.047  0.536       1.000        0.536
+Risk parity (GARCH)        0.853      0.862        -0.009  0.921       1.000        0.930
+Risk parity (historical)   0.806      0.862        -0.056  0.519       1.000        0.497
+
+README.md results section updated.
+
+Not investment advice: historical results of an educational project.
+
+Total time: 10.8 min. Output: C:\Users\simeta-pc\Documents\Portfolio\can-forecasts-beat-buy-and-hold\can-forecasts-beat-buy-and-hold\reports

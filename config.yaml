@@ -1,0 +1,58 @@
+# Configuration for `python -m beatbh`. Dates are inclusive.
+
+data:
+  tickers: [SPY, QQQ, GLD, TLT]
+  start: "2010-01-01"
+  end: "2026-09-30"
+  risk_free_ticker: "^IRX"     # 13-week US T-bill yield; null = cash earns 0 %
+  cache_dir: data              # downloaded data, not committed (Yahoo terms of use)
+
+split:                         # chronological: train | validation | test
+  train_end: "2018-12-31"
+  validation_end: "2021-12-31"
+
+costs:                         # charged on every traded dollar
+  commission: 0.0010
+  slippage: 0.0005
+
+strategy:
+  initial_capital: 10000       # USD, split equally across tickers
+  return_thresholds: [0.0, 0.01, 0.02, 0.05, 0.10]  # econometric models: invest if forecast (% per day) exceeds
+  prob_thresholds: [0.50, 0.52, 0.55, 0.60]         # classifiers: invest if P(up) exceeds
+  vol_factors: [0.75, 1.0, 1.25, 1.5]               # vol. managed: exposure = min(1, factor * hist. vol / GARCH vol)
+  rebalance_band: 0.10         # skip exposure changes smaller than this (moves to 0 % or 100 % always execute)
+  execution_lag: 0             # extra days between signal and execution (robustness check)
+
+selection:                     # a strategy replaces buy & hold only if, on validation,
+  sharpe_margin: 0.20          #   its Sharpe beats buy & hold's by this margin
+  min_trades: 10               #   and (signal rules) it completed at least this many trades
+
+models:
+  refit_every: 21              # trading days between re-estimations (~1 month)
+  arima_max_p: 2
+  arima_max_q: 2
+  garch_max_lags: 3
+  var_max_lags: 10
+  use_ml: true                 # logistic regression and gradient-boosting direction classifiers
+
+allocation:
+  rebalance_every: 21
+  corr_window: 252
+  hist_vol_window: 63
+
+stats:
+  bootstrap_reps: 2000
+  bootstrap_block: 20          # days per block (keeps serial dependence)
+
+robustness:
+  enabled: true
+  processes: auto              # parallel processes; auto = CPU cores - 1
+  windows:                     # [train_end, validation_end, test_end]
+    - ["2012-12-31", "2015-12-31", "2017-12-31"]
+    - ["2014-12-31", "2017-12-31", "2019-12-31"]
+    - ["2016-12-31", "2019-12-31", "2021-12-31"]
+    - ["2018-12-31", "2021-12-31", "2023-12-31"]
+    - ["2020-12-31", "2023-12-31", "2026-09-30"]
+
+output_dir: reports
+seed: 42

@@ -1,0 +1,14 @@
+# Downloaded market data (Yahoo Finance terms of use: do not redistribute)
+data/
+# Quick-run output
+reports_quick/
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

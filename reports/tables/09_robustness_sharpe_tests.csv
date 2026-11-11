@@ -1,0 +1,7 @@
+,sharpe,sharpe_bh,delta_sharpe,p_hac,p_hac_holm,p_bootstrap
+Selected strategy,0.886191,0.862088,0.024103,0.643711,1.0,0.637
+Vol. managed,0.846239,0.862088,-0.015849,0.870407,1.0,0.88
+Equal weight (monthly),0.857659,0.862088,-0.004429,0.886709,1.0,0.8945
+Inverse vol (GARCH),0.908911,0.862088,0.046823,0.535782,1.0,0.5365
+Risk parity (GARCH),0.853037,0.862088,-0.009051,0.921181,1.0,0.93
+Risk parity (historical),0.806243,0.862088,-0.055845,0.519302,1.0,0.497

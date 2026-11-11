@@ -1,0 +1,9 @@
+asset,series,ADF_p,KPSS_p,verdict
+SPY,log price,0.642819,0.01,non-stationary
+SPY,return,0.0,0.1,stationary
+QQQ,log price,0.800237,0.01,non-stationary
+QQQ,return,0.0,0.1,stationary
+GLD,log price,0.327807,0.01,non-stationary
+GLD,return,0.0,0.1,stationary
+TLT,log price,0.228757,0.01,non-stationary
+TLT,return,0.0,0.1,stationary

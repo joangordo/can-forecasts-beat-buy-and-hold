@@ -1,0 +1,5 @@
+asset,model,threshold,vol_factor,final_value,total_return_%,sharpe,max_drawdown_%,trades,avg_exposure_%
+SPY,Vol. managed,,1.5,5072.189982,102.887599,1.560294,-18.494132,1,95.79346
+QQQ,Vol. managed,,1.25,5973.207001,138.92828,1.641263,-16.34052,1,92.556103
+GLD,Buy & hold,,,3519.664656,40.786586,0.768414,-18.773528,1,100.0
+TLT,Buy & hold,,,3211.007812,28.440312,0.54275,-21.344207,1,100.0
