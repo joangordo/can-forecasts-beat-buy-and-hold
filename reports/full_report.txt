@@ -385,4 +385,4 @@ README.md results section updated.
 
 Not investment advice: historical results of an educational project.
 
-Total time: 10.8 min. Output: C:\Users\simeta-pc\Documents\Portfolio\can-forecasts-beat-buy-and-hold\can-forecasts-beat-buy-and-hold\reports
+Total time: 10.8 min. Output: reports/

@@ -187,7 +187,7 @@ def main(argv=None):
     elif inject_readme(results_markdown(context, f"{cfg['output_dir']}/figures/")):
         rep.text("\nREADME.md results section updated.")
     rep.text("\nNot investment advice: historical results of an educational project.")
-    rep.text(f"\nTotal time: {(time.time() - t0) / 60:.1f} min. Output: {out_dir}")
+    rep.text(f"\nTotal time: {(time.time() - t0) / 60:.1f} min. Output: {out_dir.name}/")
 
 
 def _names(df, column):
